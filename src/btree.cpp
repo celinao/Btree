@@ -148,6 +148,67 @@ BTreeIndex::~BTreeIndex()
 // BTreeIndex::insertEntry
 // -----------------------------------------------------------------------------
 
+void BTreeIndex::insertToLeaf(const void *key, const RecordId rid, PageId pageNo) {
+	
+	Page* page;
+	bufMgr->readPage(this->file, pageNo, page);
+	LeafNodeInt* node = (LeafNodeInt*)page;
+
+	int pos = -1; // position for insertion
+	for (int i = 0; i < INTARRAYLEAFSIZE; i++) {
+		if (*(int*)key < node->keyArray[i]) {
+			pos = i;
+			break;
+		}
+	}
+
+	bool full = true; // Find if leaf node is full
+	int size = -1; // if not, keep track of node's size
+	for (int i = 0; i < INTARRAYLEAFSIZE; i++) {
+		if (node->ridArray[i].page_number == 0) {
+			full = false;
+			size = i;
+			break;
+		}
+	}
+
+	// if node is not full
+	if (full == false) {
+		// shifting keys and rids to right to make space to insert
+		for (int i = size; i > pos; --i) {
+			node->keyArray[i] = node->keyArray[i-1];
+			node->ridArray[i] = node->ridArray[i-1];
+		}
+		node->keyArray[pos] = *(int*)key;
+		node->ridArray[pos] = rid;
+	}
+	else {
+		// split splitLeaf()
+	}
+
+	bufMgr->unPinPage(this->file, pageNo, true);
+
+}
+
+
+void BTreeIndex::insertToNonLeaf(const void *key, const RecordId rid, PageId pageNo) {
+
+	Page* page;
+	bufMgr->readPage(this->file, pageNo, page);
+	LeafNodeInt* node = (LeafNodeInt*)page;
+
+	int pos = -1; // position for insertion
+	for (int i = 0; i < INTARRAYNONLEAFSIZE; i++) {
+		if (*(int*)key < node->keyArray[i]) {
+			pos = i;
+			break;
+		}
+	}
+
+	bufMgr->unPinPage(this->file, pageNo, true);
+
+}
+
 void BTreeIndex::insertEntry(const void *key, const RecordId rid) 
 {
 	// Inserts a new entry into index using the pair <key, rid>

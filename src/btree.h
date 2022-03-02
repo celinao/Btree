@@ -317,6 +317,10 @@ class BTreeIndex {
 	 * */
 	~BTreeIndex();
 
+  void BTreeIndex::insertToLeaf(const void *key, const RecordId rid, PageId pageNo);
+
+  void BTreeIndex::insertToNonLeaf(const void *key, const RecordId rid, PageId pageNo);
+
 
   /**
 	 * Insert a new entry using the pair <value,rid>. 
