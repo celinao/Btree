@@ -234,7 +234,13 @@ void BTreeIndex::startScan(const void* lowValParm,
 
 void BTreeIndex::scanNext(RecordId& outRid) 
 {
-
+	try {
+        	outRid = outRid + attrByteOffset; // moves to next redordid to scan
+    	} catch(EndOfFileException e) { // if end is reached, throw exception
+        	throw IndexScanCompleteException();
+    	}
+    	currentPageData.getRecord(record_id); // gets recordid of next scan
+    	return;
 }
 
 // -----------------------------------------------------------------------------
