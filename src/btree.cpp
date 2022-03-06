@@ -226,7 +226,84 @@ void BTreeIndex::startScan(const void* lowValParm,
 				   const Operator highOpParm)
 {
 
+	if (lowOpParm != GT && lowOpParm != GTE) {
+		throw BadOpcodesException();
+	}
+
+	if (highOpParm != LT && highOpParm != LTE) {
+		throw BadOpcodesException();
+	}
+
+	if (this->scanExecuting) {
+		this->endScan();
+	}
+
+	if (*(int*)lowValParm > *(int*)highValParm) {
+		throw BadScanrangeException();
+	}
+
+
+	this->scanExecuting = true;
+
+	this->lowValInt = *(int*)lowValParm;
+    this->highValInt = *(int*)highValParm;
+    this->lowOp = lowOpParm;
+    this->highOp = highOpParm;
+
+	NonLeafNodeInt* parentNode;
+	parentNode = scanHelper(this->rootPageNum);
+
+	int i;
+	for (i = 0; i < INTARRAYNONLEAFSIZE; i++) {
+		if (parentNode->keyArray[i] > this->lowValInt || parentNode->pageNoArray[i+1] == 0) {
+			break;
+		}
+	}
+
+	this->currentPageNum = parentNode->pageNoArray[i]; // correct child/leaf
+	bufMgr->readPage(this->file, this->currentPageNum, this->currentPageData);
+	// ^ supposed to leave page pinned in bufferpool
+
+	LeafNodeInt* leaf = (LeafNodeInt*) this->currentPageData;
+
+	for (int j = 0; j < INTARRAYLEAFSIZE; j++) {
+		if(leaf->keyArray[j] > this->lowValInt) {
+			this->nextEntry = j;
+			break;
+		}
+	}
+	// TODO: NoSuchKeyFoundException
+
 }
+
+
+NonLeafNodeInt* BTreeIndex::scanHelper(PageId pageNo) {
+
+	NonLeafNodeInt* node;
+	this->currentPageNum = pageNo;
+	bufMgr->readPage(this->file, this->currentPageNum, this->currentPageData);
+	node = (NonLeafNodeInt*) this->currentPageData;
+
+	if (node->level == 1) {
+		return node;
+	}
+	else {
+		int i;
+		for (i = 0; i < INTARRAYNONLEAFSIZE; i++) {
+			if (node->keyArray[i] > this->lowValInt || node->pageNoArray[i+1] == 0) {
+				break;
+			}
+		}
+
+		// Not sure if I should unpin here or outside function. So, I've put it in a try-catch block.
+		try {
+			bufMgr->unPinPage(this->file, this->currentPageNum, false);
+		} catch(const PageNotPinnedException &e) {}
+
+		return scanHelper(node->pageNoArray[i]);
+	}
+}
+
 
 // -----------------------------------------------------------------------------
 // BTreeIndex::scanNext
