@@ -635,18 +635,19 @@ void BTreeIndex::startScan(const void* lowValParm,
 		}
 	}
 
+  bufMgr->unPinPage(this->file,this->currentPageNum,false);
 	this->currentPageNum = parentNode->pageNoArray[i]; // correct child/leaf
 	bufMgr->readPage(this->file, this->currentPageNum, this->currentPageData);
-	// ^ supposed to leave page pinned in bufferpool
-
-	LeafNodeInt* leaf = (LeafNodeInt*) this->currentPageData;
-
-	for (int j = 0; j < INTARRAYLEAFSIZE; j++) {
+	// leave page pinned in bufferpool
+  this->nextEntry = 0;
+  bufMgr->unPinPage(this->file,this->currentPageNum,false);
+	//LeafNodeInt* leaf = (LeafNodeInt*) this->currentPageData;
+	/*for (int j = 0; j < INTARRAYLEAFSIZE; j++) {
 		if(leaf->keyArray[j] > this->lowValInt) {
 			this->nextEntry = j;
 			break;
 		}
-	}
+	}*/
 	// TODO: NoSuchKeyFoundException
 
 }
@@ -659,6 +660,9 @@ NonLeafNodeInt* BTreeIndex::scanHelper(PageId pageNo) {
 	bufMgr->readPage(this->file, this->currentPageNum, this->currentPageData);
 	node = (NonLeafNodeInt*) this->currentPageData;
 
+  std::cout<<"inside helper"<<std::endl;
+  std::cout<<node->level<<std::endl;
+
 	if (node->level == 1) {
 		return node;
 	}
@@ -670,10 +674,8 @@ NonLeafNodeInt* BTreeIndex::scanHelper(PageId pageNo) {
 			}
 		}
 
-		// Not sure if I should unpin here or outside function. So, I've put it in a try-catch block.
-		// try {
 			bufMgr->unPinPage(this->file, this->currentPageNum, false);
-		// }catch(const PageNotPinnedException &e) {}
+		
 
 		return scanHelper(node->pageNoArray[i]);
 	}
@@ -685,13 +687,37 @@ NonLeafNodeInt* BTreeIndex::scanHelper(PageId pageNo) {
 
 void BTreeIndex::scanNext(RecordId& outRid) 
 {
-	// try {
-        // 	outRid = outRid + attrByteOffset; // moves to next redordid to scan
-    	// } catch(EndOfFileException e) { // if end is reached, throw exception
-        // 	throw IndexScanCompleteException();
-    	// }
-    	// currentPageData.getRecord(record_id); // gets recordid of next scan
-    	// return;
+	if (this->scanExecuting == false){
+	 	throw ScanNotInitializedException();
+	}
+
+    LeafNodeInt* node = (LeafNodeInt*) this->currentPageData;
+
+	if(this->nextEntry >= INTARRAYLEAFSIZE || node->ridArray[nextEntry].page_number == 0){
+		
+		bufMgr->unPinPage(this->file, this->currentPageNum, false);
+
+		if (node->rightSibPageNo == 0) {
+			throw IndexScanCompletedException(); // if leaf is over
+		} else {
+			nextEntry = 0; //reinitialize nextentry
+			this->currentPageNum = node->rightSibPageNo;
+			bufMgr->readPage(this->file, this->currentPageNum, this->currentPageData);
+			node = (LeafNodeInt*) this->currentPageData;
+		}
+
+		if (this->highOp == LT && node->keyArray[this->nextEntry] < this->highValInt) {
+			outRid = node->ridArray[nextEntry];
+		} else {throw IndexScanCompletedException();}
+
+		if (this->highOp == LTE && node->keyArray[this->nextEntry] <= this->highValInt) {
+			outRid = node->ridArray[nextEntry];
+		} else {throw IndexScanCompletedException();}
+
+		this->nextEntry += 1; //update to next
+
+	}
+	return;
 }
 
 // -----------------------------------------------------------------------------
@@ -700,19 +726,13 @@ void BTreeIndex::scanNext(RecordId& outRid)
 //
 void BTreeIndex::endScan() 
 {
-	// if(fscan == NULL){ // if no scan started, throw exception
-	// 	throw ScanNotInitializedException();
-	// }
-	
-	// try{ // unpin pages if pinned
-	// 	bufMgr->unPinPage(this->file, this->currentPageNum, false);
-	// } catch (const PageNotPinnedException &e) {}
-	
-	// fscan = ~FileScan(); // decronstructs FileScan object
-	
-	// scanExecuting = false; // signifies scan complete
-	
-	// return;
+   if (this->scanExecuting == false){ // if no scan started, throw exception
+	 	throw ScanNotInitializedException();
+	 }
+	 // unpin pages if pinned
+	 bufMgr->unPinPage(this->file, this->currentPageNum, false);
+	 scanExecuting = false; // signifies scan complete
+	 return;
 }
 
 }
