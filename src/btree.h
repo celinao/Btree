@@ -46,13 +46,15 @@ enum Operator
  * @brief Number of key slots in B+Tree leaf for INTEGER key.
  */
 //                                                  sibling ptr             key               rid
-const  int INTARRAYLEAFSIZE = ( Page::SIZE - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( RecordId ) );
+// const  int INTARRAYLEAFSIZE = ( Page::SIZE - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( RecordId ) );
+const  int INTARRAYLEAFSIZE = 5; // TEMP VARIABLE FOR TESTING
 
 /**
  * @brief Number of key slots in B+Tree non-leaf for INTEGER key.
  */
 //                                                     level     extra pageNo                  key       pageNo
-const  int INTARRAYNONLEAFSIZE = ( Page::SIZE - sizeof( int ) - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( PageId ) );
+// const  int INTARRAYNONLEAFSIZE = ( Page::SIZE - sizeof( int ) - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( PageId ) );
+const  int INTARRAYNONLEAFSIZE = 5;
 
 /**
  * @brief Structure to store a key-rid pair. It is used to pass the pair to functions that 
@@ -109,6 +111,8 @@ bool operator<( const RIDKeyPair<T>& r1, const RIDKeyPair<T>& r2 )
  * at the root the root page may get moved up and get a new page no.
 */
 struct IndexMetaInfo{
+
+  bool rootIsLeaf;
   /**
    * Name of base relation.
    */
@@ -146,6 +150,8 @@ struct NonLeafNodeInt{
    */
 	int level;
 
+  bool isLeaf; 
+
   /**
    * Stores keys.
    */
@@ -162,6 +168,9 @@ struct NonLeafNodeInt{
  * @brief Structure for all leaf nodes when the key is of INTEGER type.
 */
 struct LeafNodeInt{
+
+  bool isLeaf;
+  
   /**
    * Stores keys.
    */
@@ -317,11 +326,18 @@ class BTreeIndex {
 	 * */
 	~BTreeIndex();
 
-  void BTreeIndex::insertToLeaf(const void *key, const RecordId rid, PageId pageNo);
+  PageKeyPair<int> insertToLeaf(const void *key, const RecordId rid, PageId pageNo);
 
-  void BTreeIndex::insertToNonLeaf(const void *key, const RecordId rid, PageId pageNo);
+  void insertToNonLeaf(PageKeyPair<int> pageKey, PageId pageNo, int level);
 
-  NonLeafNodeInt* BTreeIndex::scanHelper(PageId pageNo);
+  NonLeafNodeInt* scanHelper(PageId pageNo);
+
+  PageId findPageId(const void *key, PageId pageNo, const RecordId rid, int level);
+
+  PageKeyPair<int> splitLeaf(PageId pageNo);
+
+  void printNode(PageId pageNo); 
+  void printTree(PageId pageNo, bool leaf); 
 
 
   /**
