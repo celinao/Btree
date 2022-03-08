@@ -89,7 +89,6 @@ BTreeIndex::BTreeIndex(const std::string & relationName,
 		// Create root node and add right sibling 
 		LeafNodeInt *rootNode = (LeafNodeInt *) rootPage;
 		rootNode->rightSibPageNo = 0;
-		rootNode->isLeaf = true;
 
 		// Adding Meta Information to headerPage
 		IndexMetaInfo *metaInfo = (IndexMetaInfo *) headerPage;
@@ -154,6 +153,56 @@ BTreeIndex::~BTreeIndex()
 // BTreeIndex::insertEntry
 // -----------------------------------------------------------------------------
 
+void BTreeIndex::insertEntry(const void *key, const RecordId rid) 
+{
+	std::cout << "_____________________________________" << std::endl;
+
+	// Get headerPage 
+	Page *headerPage; 
+	headerPageNum = file->getFirstPageNo();
+	bufMgr->readPage(file, headerPageNum, headerPage);
+	IndexMetaInfo *metaInfo = (IndexMetaInfo *) headerPage;
+
+	// Check if root is a leaf or internal node 
+	PageKeyPair<int> pageKey; 
+	if(metaInfo->rootIsLeaf){
+		
+		// Root is a leaf node 
+		pageKey = insertToLeaf(key, rid, rootPageNum); 
+
+		// Check if root was split and needs to change into an internal node 
+		if(pageKey.pageNo != 0){
+			
+			// Create a new internal node for the new root 
+			Page* newRootPage; 
+			PageId newRootNo; 
+			bufMgr->allocPage(file, newRootNo, newRootPage);
+			NonLeafNodeInt *newRootNode = (NonLeafNodeInt *)newRootPage;
+
+			// Set initial values 
+			newRootNode->keyArray[0] = pageKey.key;
+			newRootNode->pageNoArray[0] = rootPageNum;
+			newRootNode->pageNoArray[1] = pageKey.pageNo;
+			newRootNode->level = 1; 
+
+			// Update header page 
+			metaInfo->rootPageNo = newRootNo; 
+			metaInfo->rootIsLeaf = false;
+			rootPageNum = newRootNo;
+			
+			bufMgr->unPinPage(file, newRootNo, true);
+		}
+	}else{
+		// Root is an internal node 
+		// Does this need to return a key? 
+		findPageId(key, rootPageNum, rid, 1);
+		// std::cout << "insertEntry(): " << pageId << std::endl;
+	}	
+
+	// Unpin Header page
+	bufMgr->unPinPage(file, headerPageNum, true);
+}
+
 PageKeyPair<int> BTreeIndex::insertToLeaf(const void *key, const RecordId rid, PageId pageNo) {
 	
 	// Read Node that is being inserted to 
@@ -161,13 +210,13 @@ PageKeyPair<int> BTreeIndex::insertToLeaf(const void *key, const RecordId rid, P
 	bufMgr->readPage(file, pageNo, page);
 	LeafNodeInt* node = (LeafNodeInt*)page;
 
-	bool full = true; // Find if leaf node is full
-	int size = -1; // if not, keep track of node's size
-	
+	// Check if leaf node is full and keep track of leaf size
+	bool full = true; 
+	int size = -1; 
 	for (int i = 0; i < INTARRAYLEAFSIZE; i++) {
-		size = i;
-		
+		// Break loop if index is empty 
 		if (node->ridArray[i].page_number == 0) {
+			size = i;
 			full = false;
 			break;
 		}
@@ -204,7 +253,9 @@ PageKeyPair<int> BTreeIndex::insertToLeaf(const void *key, const RecordId rid, P
 		// Node is full and must be split 
 		PageKeyPair<int> pageKey = splitLeaf(pageNo);
 
-		// Check if key belongs in first or second half of the node 
+		// Check if key belongs in left or right split node
+		// No need to check return of insertToLeaf since the node was just split and
+		// therefore not full. 
 		if(pageKey.key < *(int*)key){
 			insertToLeaf(key, rid, pageKey.pageNo);
 		}else{
@@ -222,61 +273,16 @@ PageKeyPair<int> BTreeIndex::insertToLeaf(const void *key, const RecordId rid, P
 	return pageKey;
 }
 
-PageKeyPair<int> BTreeIndex::splitLeaf(PageId pageNo){
-	std::cout << "splitting Leaf" << endl;
-
-	// Read node to be split 
-	Page* page;
-	bufMgr->readPage(file, pageNo, page);
-	LeafNodeInt* node = (LeafNodeInt*)page;
-
-	// Create new Node
-	Page* newPage; 
-	PageId newPageNo; 
-	bufMgr->allocPage(file, newPageNo, newPage);
-	LeafNodeInt *newNode = (LeafNodeInt *) newPage;
-	newNode->rightSibPageNo = node->rightSibPageNo; 
-	newNode->isLeaf = true;
-
-	// Set old page to point to new page
-	node->rightSibPageNo = newPageNo;
-
-	// Populate new page with last half of old node records 
-	int idx = 0; 
-	for(int i = INTARRAYLEAFSIZE/2; i < INTARRAYLEAFSIZE; i++){
-		// Add key and rid to newNode
-		newNode->keyArray[idx] = node->keyArray[i]; 
-		newNode->ridArray[idx] = node->ridArray[i];
-
-		// Remove key and rid from node
-		node->keyArray[i] = 0;
-		node->ridArray[i].page_number = 0;
-		
-		idx++; 
-	}
-
-	// unpin old and new nodes
-	bufMgr->unPinPage(file, pageNo, true);
-	bufMgr->unPinPage(file, newPageNo, true);
-
-	// Find parent page and add pointer 
-	PageKeyPair<int> pageKey; 
-	pageKey.set(newPageNo, newNode->keyArray[0]);
-
-	return pageKey;
-}
-
-
-
-// Function currently unused
 void BTreeIndex::insertToNonLeaf(PageKeyPair<int> pageKey, PageId pageNo, int level) {
 
+	// Create internal node 
 	Page* page;
 	bufMgr->readPage(file, pageNo, page);
 	NonLeafNodeInt* node = (NonLeafNodeInt*)page;
 
-	bool full = true; // Find if leaf node is full
-	int size = -1; // if not, keep track of node's size
+	// Check if leaf node is full and keep track of leaf size
+	bool full = true; 
+	int size = -1; 
 	
 	for (int i = 0; i < INTARRAYNONLEAFSIZE+1; i++) {
 		if(node->pageNoArray[i] == 0){
@@ -319,55 +325,87 @@ void BTreeIndex::insertToNonLeaf(PageKeyPair<int> pageKey, PageId pageNo, int le
 	bufMgr->unPinPage(file, pageNo, true);
 }
 
-void BTreeIndex::insertEntry(const void *key, const RecordId rid) 
-{
-	std::cout << "_____________________________________" << std::endl;
+PageKeyPair<int> BTreeIndex::splitLeaf(PageId pageNo){
+	std::cout << "splitting Leaf" << endl;
 
-	// Get headerPage 
-	Page *headerPage; 
-	headerPageNum = file->getFirstPageNo();
-	bufMgr->readPage(file, headerPageNum, headerPage);
-	IndexMetaInfo *metaInfo = (IndexMetaInfo *) headerPage;
+	// Read node to be split 
+	Page* page;
+	bufMgr->readPage(file, pageNo, page);
+	LeafNodeInt* node = (LeafNodeInt*)page;
 
-	// Check if root is a leaf or internal node 
+	// Create new Node (will be inserted to the left of node) 
+	Page* newPage; 
+	PageId newPageNo; 
+	bufMgr->allocPage(file, newPageNo, newPage);
+	LeafNodeInt *newNode = (LeafNodeInt *) newPage;
+
+	// insert newNode into linked list 
+	newNode->rightSibPageNo = node->rightSibPageNo; 
+	node->rightSibPageNo = newPageNo;
+
+	// Populate new page with last half of old node records 
+	int idx = 0; 
+	for(int i = INTARRAYLEAFSIZE/2; i < INTARRAYLEAFSIZE; i++){
+		// Add key and rid to newNode
+		newNode->keyArray[idx] = node->keyArray[i]; 
+		newNode->ridArray[idx] = node->ridArray[i];
+
+		// Remove key and rid from node
+		node->keyArray[i] = 0;
+		node->ridArray[i].page_number = 0;
+		idx++; 
+	}
+
+	// unpin old and new nodes
+	bufMgr->unPinPage(file, pageNo, true);
+	bufMgr->unPinPage(file, newPageNo, true);
+
+	// return the new pageNo and key to be inserted to parent node 
 	PageKeyPair<int> pageKey; 
-	if(metaInfo->rootIsLeaf){
+	pageKey.set(newPageNo, newNode->keyArray[0]);
+
+	return pageKey;
+}
+
+PageId BTreeIndex::findPageId(const void *key, PageId pageNo, const RecordId rid, int level){
+	
+	// Create internal node 
+	Page* page; 
+	bufMgr->readPage(file, pageNo, page);
+	NonLeafNodeInt *node = (NonLeafNodeInt *)page;
+
+	// Check every key in array for insertion position 
+	PageKeyPair<int> pageKey; 
+	for(int i = 0; i < INTARRAYNONLEAFSIZE; i++){
 		
-		// Root is a leaf node 
-		pageKey = insertToLeaf(key, rid, rootPageNum); 
-
-		// Check if root was split and needs to change into an internal node 
-		if(pageKey.pageNo != 0){
+		// insert if key is less than node's key or 0 (0 if it is greater than all keys)
+		if(*(int *)key < node->keyArray[i] || 0 == node->keyArray[i]){
 			
-			// Create a new internal node for the new root 
-			Page* newRootPage; 
-			PageId newRootNo; 
-			bufMgr->allocPage(file, newRootNo, newRootPage);
-			NonLeafNodeInt *newRootNode = (NonLeafNodeInt *)newRootPage;
+			// This does nothing rn. Maybe change level later when inserting internal nodes ??? 
+			if(node->level == level){
+				// Insert Page
+				pageKey = insertToLeaf(key, rid, node->pageNoArray[i]); 
+				
+				// Check if node split and needs to be updated
+				if(pageKey.pageNo != 0){
+					insertToNonLeaf(pageKey, pageNo, level); 
+				}
+				break;
 
-			// Set initial values 
-			newRootNode->isLeaf = false;
-			newRootNode->keyArray[0] = pageKey.key;
-			newRootNode->pageNoArray[0] = rootPageNum;
-			newRootNode->pageNoArray[1] = pageKey.pageNo;
-			newRootNode->level = 1; 
-
-			// Update header page 
-			metaInfo->rootPageNo = newRootNo; 
-			metaInfo->rootIsLeaf = false;
-			rootPageNum = newRootNo;
-			
-			bufMgr->unPinPage(file, newRootNo, true);
+			}else{
+				// Does this need to return a pageKeyPair to update more internal nodes?
+				findPageId(key, node->pageNoArray[i], rid, level);
+				
+			}
 		}
-	}else{
-		// Root is an internal node 
-		// Does this need to return a key? 
-		findPageId(key, rootPageNum, rid, 1);
-		// std::cout << "insertEntry(): " << pageId << std::endl;
-	}	
+	}
 
-	// Unpin Header page
-	bufMgr->unPinPage(file, headerPageNum, true);
+	
+	bufMgr->unPinPage(file, pageNo, false);
+
+	// Doing nothing with PageId being returned right now. Use or Remove. 
+	PageId blankId = 0;
+	return blankId;
 }
 
 void BTreeIndex::printTree(PageId pageNo, bool leaf){
@@ -432,47 +470,6 @@ void BTreeIndex::printNode(PageId pageNo){
 	bufMgr->unPinPage(file, pageNo, false);
 }
 
-PageId BTreeIndex::findPageId(const void *key, PageId pageNo, const RecordId rid, int level){
-	
-	Page* page; 
-	bufMgr->readPage(file, pageNo, page);
-	NonLeafNodeInt *node = (NonLeafNodeInt *)page;
-
-	// Make sure node is internal 
-	if(node->isLeaf){
-		throw NoSuchKeyFoundException();
-	}
-
-	// Check every key in array 
-	PageKeyPair<int> pageKey; 
-	for(int i = 0; i < INTARRAYNONLEAFSIZE; i++){
-		
-		if(*(int *)key < node->keyArray[i] || 0 == node->keyArray[i]){
-			
-			if(node->level == level){
-				// Insert Page
-				pageKey = insertToLeaf(key, rid, node->pageNoArray[i]); 
-				
-				// Check if node split and needs to be updated
-				if(pageKey.pageNo != 0){
-					insertToNonLeaf(pageKey, pageNo, level); 
-				}
-				break;
-
-			}else{
-				// Does this need to return a pageKeyPair to update more internal nodes?
-				findPageId(key, node->pageNoArray[i], rid, level);
-				
-			}
-		}
-	}
-
-	
-	bufMgr->unPinPage(file, pageNo, false);
-	// Insert pageKey into non-leaf node. 
-	PageId blankId = 0;
-	return blankId;
-}
 
 // -----------------------------------------------------------------------------
 // BTreeIndex::startScan
@@ -562,7 +559,6 @@ NonLeafNodeInt* BTreeIndex::scanHelper(PageId pageNo) {
 	}
 }
 
-
 // -----------------------------------------------------------------------------
 // BTreeIndex::scanNext
 // -----------------------------------------------------------------------------
@@ -584,19 +580,19 @@ void BTreeIndex::scanNext(RecordId& outRid)
 //
 void BTreeIndex::endScan() 
 {
-	if(fscan == NULL){ // if no scan started, throw exception
-		throw ScanNotInitializedException();
-	}
+	// if(fscan == NULL){ // if no scan started, throw exception
+	// 	throw ScanNotInitializedException();
+	// }
 	
-	try{ // unpin pages if pinned
-		bufMgr->unPinPage(this->file, this->currentPageNum, false);
-	} catch (const PageNotPinnedException &e) {}
+	// try{ // unpin pages if pinned
+	// 	bufMgr->unPinPage(this->file, this->currentPageNum, false);
+	// } catch (const PageNotPinnedException &e) {}
 	
-	fscan = ~FileScan(); // decronstructs FileScan object
+	// fscan = ~FileScan(); // decronstructs FileScan object
 	
-	scanExecuting = false; // signifies scan complete
+	// scanExecuting = false; // signifies scan complete
 	
-	return;
+	// return;
 }
 
 }

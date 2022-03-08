@@ -150,8 +150,6 @@ struct NonLeafNodeInt{
    */
 	int level;
 
-  bool isLeaf; 
-
   /**
    * Stores keys.
    */
@@ -168,8 +166,6 @@ struct NonLeafNodeInt{
  * @brief Structure for all leaf nodes when the key is of INTEGER type.
 */
 struct LeafNodeInt{
-
-  bool isLeaf;
   
   /**
    * Stores keys.
@@ -326,19 +322,53 @@ class BTreeIndex {
 	 * */
 	~BTreeIndex();
 
+  /**
+   * Finds the index where the key should be inserted into leaf node and inserts it 
+   * @param key   key to insert, pointer to integer/double/char string 
+   * @param rid   RecordID of a record whose entry is getting inserted into the index
+   * @param pageNo Page number of leaf node where key will be inserted 
+   * @return PageKeyPair of new node if the leaf was full and was split 
+   **/
   PageKeyPair<int> insertToLeaf(const void *key, const RecordId rid, PageId pageNo);
 
+  /** 
+   * Inserts a node into an internal leaf 
+   * @param pageKey   PageKeyPair containing the page number and key to be inserted
+   * @param pageNo    pageNumber of node to be inserted 
+   * @param level     level of the node to be inserted 
+   **/
   void insertToNonLeaf(PageKeyPair<int> pageKey, PageId pageNo, int level);
 
-  NonLeafNodeInt* scanHelper(PageId pageNo);
-
-  PageId findPageId(const void *key, PageId pageNo, const RecordId rid, int level);
-
+  /**
+   * Splits the node into two separate nodes and returns the page number and 
+   * key of the new node 
+   * @param pageNo page number of node to be split 
+   * @return PageKeyPair containing page number and key of the new node 
+   **/  
   PageKeyPair<int> splitLeaf(PageId pageNo);
 
-  void printNode(PageId pageNo); 
-  void printTree(PageId pageNo, bool leaf); 
+  /** 
+   * Recursively finds Leaf Node where the key should be inserted and calls insertToLeaf
+   * @param key   key to insert, pointer to integer/double/char string 
+   * @param pageNo Page number of node being checked for insertion  
+   * @param rid   RecordId of a record whose entry is getting inserted into the index.
+   * @param level  
+   * @return 
+   **/
+  PageId findPageId(const void *key, PageId pageNo, const RecordId rid, int level);
 
+  /**
+   * Prints the keys of a leaf Node 
+   * @param pageNo Page Number of Leaf Node 
+   * */
+  void printNode(PageId pageNo); 
+
+  /**
+   * Prints the entire BTree starting from the specified page 
+   * @param pageNo page number of node to start printing 
+   * @param leaf true if the starting page is a leaf node 
+   **/
+  void printTree(PageId pageNo, bool leaf); 
 
   /**
 	 * Insert a new entry using the pair <value,rid>. 
@@ -351,6 +381,7 @@ class BTreeIndex {
 	**/
 	void insertEntry(const void* key, const RecordId rid);
 
+  NonLeafNodeInt* scanHelper(PageId pageNo);
 
   /**
 	 * Begin a filtered scan of the index.  For instance, if the method is called 
@@ -368,7 +399,6 @@ class BTreeIndex {
 	 * @throws  NoSuchKeyFoundException If there is no key in the B+ tree that satisfies the scan criteria.
 	**/
 	void startScan(const void* lowVal, const Operator lowOp, const void* highVal, const Operator highOp);
-
 
   /**
 	 * Fetch the record id of the next index entry that matches the scan.
