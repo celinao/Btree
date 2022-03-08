@@ -46,15 +46,15 @@ enum Operator
  * @brief Number of key slots in B+Tree leaf for INTEGER key.
  */
 //                                                  sibling ptr             key               rid
-// const  int INTARRAYLEAFSIZE = ( Page::SIZE - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( RecordId ) );
-const  int INTARRAYLEAFSIZE = 5; // TEMP VARIABLE FOR TESTING
+const  int INTARRAYLEAFSIZE = ( Page::SIZE - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( RecordId ) );
+// const  int INTARRAYLEAFSIZE = 5; // TEMP VARIABLE FOR TESTING
 
 /**
  * @brief Number of key slots in B+Tree non-leaf for INTEGER key.
  */
 //                                                     level     extra pageNo                  key       pageNo
-// const  int INTARRAYNONLEAFSIZE = ( Page::SIZE - sizeof( int ) - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( PageId ) );
-const  int INTARRAYNONLEAFSIZE = 5;
+const  int INTARRAYNONLEAFSIZE = ( Page::SIZE - sizeof( int ) - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( PageId ) );
+// const  int INTARRAYNONLEAFSIZE = 5;
 
 /**
  * @brief Structure to store a key-rid pair. It is used to pass the pair to functions that 
@@ -355,7 +355,12 @@ class BTreeIndex {
    * @param level  
    * @return 
    **/
-  PageId findPageId(const void *key, PageId pageNo, const RecordId rid, int level);
+  void insertLeafHelper(const void *key, PageId pageNo, const RecordId rid, int level);
+
+  void updateRootNode(PageKeyPair<int> pageKey); 
+  PageId findParentNode(PageKeyPair<int> pageKey, PageId paegNo, int level); 
+  void insertToNonLeaf(PageKeyPair<int> pageKey, PageId pageNo); 
+  PageKeyPair<int> splitNonLeaf(PageId pageNo, PageKeyPair<int> newPageKey); 
 
   /**
    * Prints the keys of a leaf Node 
