@@ -46,15 +46,15 @@ enum Operator
  * @brief Number of key slots in B+Tree leaf for INTEGER key.
  */
 //                                                  sibling ptr             key               rid
-const  int INTARRAYLEAFSIZE = ( Page::SIZE - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( RecordId ) );
-// const  int INTARRAYLEAFSIZE = 4; // TEMP VARIABLE FOR TESTING
+// const  int INTARRAYLEAFSIZE = ( Page::SIZE - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( RecordId ) );
+const  int INTARRAYLEAFSIZE = 5; // TEMP VARIABLE FOR TESTING
 
 /**
  * @brief Number of key slots in B+Tree non-leaf for INTEGER key.
  */
 //                                                     level     extra pageNo                  key       pageNo
-const  int INTARRAYNONLEAFSIZE = ( Page::SIZE - sizeof( int ) - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( PageId ) );
-// const  int INTARRAYNONLEAFSIZE = 4;
+// const  int INTARRAYNONLEAFSIZE = ( Page::SIZE - sizeof( int ) - sizeof( PageId ) ) / ( sizeof( int ) + sizeof( PageId ) );
+const  int INTARRAYNONLEAFSIZE = 5;
 
 /**
  * @brief Structure to store a key-rid pair. It is used to pass the pair to functions that 
@@ -335,11 +335,9 @@ class BTreeIndex {
    * Inserts a node into an internal leaf 
    * @param pageKey   PageKeyPair containing the page number and key to be inserted
    * @param pageNo    pageNumber of node to be inserted 
+   * @param level     level of the node to be inserted 
    **/
-  void insertToNonLeaf(PageKeyPair<int> pageKey, PageId pageNo);
-
-  void updateRootNode(PageKeyPair<int> pageKey); 
-  PageId findParentNode(PageKeyPair<int> pageKey, PageId pageNo, int level);
+  void insertToNonLeaf(PageKeyPair<int> pageKey, PageId pageNo, int level);
 
   /**
    * Splits the node into two separate nodes and returns the page number and 
@@ -349,16 +347,15 @@ class BTreeIndex {
    **/  
   PageKeyPair<int> splitLeaf(PageId pageNo);
 
-  PageKeyPair<int> splitNonLeaf(PageId pageNo, PageKeyPair<int> newPageKey);
-
   /** 
    * Recursively finds Leaf Node where the key should be inserted and calls insertToLeaf
    * @param key   key to insert, pointer to integer/double/char string 
    * @param pageNo Page number of node being checked for insertion  
    * @param rid   RecordId of a record whose entry is getting inserted into the index.
    * @param level  
+   * @return 
    **/
-  void insertLeafHelper(const void *key, PageId pageNo, const RecordId rid, int level);
+  PageId findPageId(const void *key, PageId pageNo, const RecordId rid, int level);
 
   /**
    * Prints the keys of a leaf Node 
