@@ -584,7 +584,19 @@ void BTreeIndex::scanNext(RecordId& outRid)
 //
 void BTreeIndex::endScan() 
 {
-
+	if(fscan == NULL){ // if no scan started, throw exception
+		throw ScanNotInitializedException();
+	}
+	
+	try{ // unpin pages if pinned
+		bufMgr->unPinPage(this->file, this->currentPageNum, false);
+	} catch (const PageNotPinnedException &e) {}
+	
+	fscan = ~FileScan(); // decronstructs FileScan object
+	
+	scanExecuting = false; // signifies scan complete
+	
+	return;
 }
 
 }
