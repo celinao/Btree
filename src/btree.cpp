@@ -552,7 +552,7 @@ NonLeafNodeInt* BTreeIndex::scanHelper(PageId pageNo) {
 
 		// Not sure if I should unpin here or outside function. So, I've put it in a try-catch block.
 		// try {
-			bufMgr->unPinPage(this->file, this->currentPageNum, false);
+		bufMgr->unPinPage(this->file, this->currentPageNum, false);
 		// }catch(const PageNotPinnedException &e) {}
 
 		return scanHelper(node->pageNoArray[i]);
@@ -563,7 +563,7 @@ NonLeafNodeInt* BTreeIndex::scanHelper(PageId pageNo) {
 // BTreeIndex::scanNext
 // -----------------------------------------------------------------------------
 
-void BTreeIndex::scanNext(RecordId& outRid) 
+void BTreeIndex::scanNext(RecordId& outRid)
 {
 	// try {
         // 	outRid = outRid + attrByteOffset; // moves to next redordid to scan
@@ -578,21 +578,15 @@ void BTreeIndex::scanNext(RecordId& outRid)
 // BTreeIndex::endScan
 // -----------------------------------------------------------------------------
 //
-void BTreeIndex::endScan() 
+void BTreeIndex::endScan()
 {
-	// if(fscan == NULL){ // if no scan started, throw exception
-	// 	throw ScanNotInitializedException();
-	// }
-	
-	// try{ // unpin pages if pinned
-	// 	bufMgr->unPinPage(this->file, this->currentPageNum, false);
-	// } catch (const PageNotPinnedException &e) {}
-	
-	// fscan = ~FileScan(); // decronstructs FileScan object
-	
-	// scanExecuting = false; // signifies scan complete
-	
-	// return;
+	 if(this->scanExecuting == false){ // if no scan started, throw exception
+	 	throw ScanNotInitializedException();
+	 }
+	 // unpin pages if pinned
+	 bufMgr->unPinPage(this->file, this->currentPageNum, false);
+	 scanExecuting = false; // signifies scan complete
+	 return;
 }
 
 }
