@@ -36,11 +36,14 @@ BTreeIndex::BTreeIndex(const std::string & relationName,
 	// I don't see a need for it since if the file does/doesn't exist an exception should be 
 	// thrown when creating with constructor. However, a piazza post seems to indicate it should be???? 
 
+	std::cout << "Has the scan started? " << this->scanExecuting << std::endl;  
+
 	// Initialize variables
 	// Assuming all inputs are integers (as specified in assignment document)
 	bufMgr = bufMgrIn; 
 	leafOccupancy = INTARRAYLEAFSIZE; // Not sure of the purpose of either of these
 	nodeOccupancy = INTARRAYNONLEAFSIZE;
+	this->scanExecuting = false; 
 
 	this->attrByteOffset = attrByteOffset;
 	attributeType = attrType;
@@ -121,13 +124,15 @@ BTreeIndex::BTreeIndex(const std::string & relationName,
 		}
 		catch(const EndOfFileException &e)
 		{
-			// std::cout << "_______________________" << std::endl;
-			// std::cout << "Print Tree: " << std::endl;
-			// printTree(rootPageNum, false); 
+			std::cout << "_______________________" << std::endl;
+			std::cout << "Print Tree: " << std::endl;
+			printTree(rootPageNum, false); 
 			bufMgr->flushFile(file);
 			std::cout << "Finished Flushing" << std::endl;
 		}
 	}
+	
+	std::cout << "Has the scan started Take 2? " << this->scanExecuting << std::endl;  
 }
 
 
@@ -600,7 +605,7 @@ void BTreeIndex::startScan(const void* lowValParm,
 				   const void* highValParm,
 				   const Operator highOpParm)
 {
-
+	std::cout << "___________________Start Scan__________________" << std::endl;
 	if (lowOpParm != GT && lowOpParm != GTE) {
 		throw BadOpcodesException();
 	}
@@ -608,15 +613,19 @@ void BTreeIndex::startScan(const void* lowValParm,
 	if (highOpParm != LT && highOpParm != LTE) {
 		throw BadOpcodesException();
 	}
+	
+	
 
 	if (this->scanExecuting) {
+		std::cout << (this->scanExecuting == true) << std::endl;
 		this->endScan();
 	}
+	
 
 	if (*(int*)lowValParm > *(int*)highValParm) {
 		throw BadScanrangeException();
 	}
-
+	
 
 	this->scanExecuting = true;
 
@@ -632,7 +641,20 @@ void BTreeIndex::startScan(const void* lowValParm,
 	IndexMetaInfo *metaInfo = (IndexMetaInfo *) headerPage;
 	
 	if(metaInfo->rootIsLeaf){
-		return;
+		this->currentPageNum = this->rootPageNum;
+		bufMgr->readPage(file, currentPageNum, currentPageData); 
+     	LeafNodeInt* root = (LeafNodeInt*)currentPageData; 
+
+		for(int i = 0; i < INTARRAYLEAFSIZE; i++){
+			if (this->lowOp == GT && root->keyArray[i] > this->lowValInt) {
+				nextEntry = i; 
+				break;
+			} else if (this->lowOp == GTE && root->keyArray[i] >= this->lowValInt) {
+				nextEntry = i; 
+				break;
+			} 
+		}
+		return; 
 	}
 
 	bufMgr->unPinPage(file, headerPageNum, false); 
@@ -641,51 +663,44 @@ void BTreeIndex::startScan(const void* lowValParm,
 
 
 void BTreeIndex::scanHelper(PageId pageNo) {
-
-	// NonLeafNodeInt* node;
-	// this->currentPageNum = pageNo;
+	// std::cout << "scanHelper: " << pageNo << std::endl; 
 	
 	// Creates Internal node being checked 
 	Page *page; 
 	bufMgr->readPage(this->file, pageNo, page);
 	NonLeafNodeInt* node = (NonLeafNodeInt*)page;
-
+	
 	bufMgr->unPinPage(file, pageNo, false); 
-
-//   std::cout<<"inside helper: " << pageNo <<std::endl;
-//   std::cout<<node->level<<std::endl;
 
 	// Find the position 
 	int i;
-	for (i = 0; i < INTARRAYNONLEAFSIZE; i++) {
-		if (node->keyArray[i] > this->lowValInt || node->pageNoArray[i+1] == 0 ) {
+	for (i = 0; i < INTARRAYNONLEAFSIZE+1; i++) {
+		if (node->keyArray[i] > this->lowValInt ) {
+			break;
+		}else if( node->pageNoArray[i+1] == 0 ){
 			break;
 		}
 	}
+
 
 	if(node->level == 1){
 		// Leaf Node found. Set global variables 
 		bufMgr->readPage(file, node->pageNoArray[i], this->currentPageData); 
 		this->currentPageNum = node->pageNoArray[i]; 
-		// FIND NEXT ENTRY 
 
 		LeafNodeInt *leafNode = (LeafNodeInt*)currentPageData; 
-		// printNode(currentPageNum); 
 		
 		for(int i = 0; i < INTARRAYLEAFSIZE; i++){
 
 			if (this->lowOp == GT && leafNode->keyArray[i] > this->lowValInt) {
-				// std::cout << "found NextEntry" << i << std::endl; 
 				nextEntry = i; 
 				break;
 			} else if (this->lowOp == GTE && leafNode->keyArray[i] >= this->lowValInt) {
-				// std::cout << "found NextEntry" << i << std::endl; 
 				nextEntry = i; 
 				break;
 			} 
 		}
 
-		// std::cout << "Set Current Page Data " << currentPageNum << std::endl; 
 	}else{
 		scanHelper(node->pageNoArray[i]);
 	}
@@ -706,9 +721,7 @@ void BTreeIndex::scanNext(RecordId& outRid)
 
 	// End Scan or go to next node 
 	if(this->nextEntry >= INTARRAYLEAFSIZE || node->ridArray[nextEntry].page_number == 0){
-		// std::cout << "finding next node in ScanNext()" << std::endl;
 		
-
 		if (node->rightSibPageNo == 0) {
 			throw IndexScanCompletedException(); // if leaf is over
 		} else {
@@ -722,10 +735,8 @@ void BTreeIndex::scanNext(RecordId& outRid)
 	}
 
 	if (this->highOp == LT && node->keyArray[this->nextEntry] < this->highValInt) {
-		// std::cout << "LT: " << node->keyArray[nextEntry] << ": " << node->ridArray[nextEntry].page_number << std::endl;
 		outRid = node->ridArray[nextEntry];
 	} else if (this->highOp == LTE && node->keyArray[this->nextEntry] <= this->highValInt) {
-		// std::cout << "LTE: " << node->keyArray[nextEntry] << ": " << node->ridArray[nextEntry].page_number << std::endl;
 		outRid = node->ridArray[nextEntry];
 	} else {throw IndexScanCompletedException();}
 
@@ -739,13 +750,14 @@ void BTreeIndex::scanNext(RecordId& outRid)
 //
 void BTreeIndex::endScan() 
 {
-   if (this->scanExecuting == false){ // if no scan started, throw exception
+    if (this->scanExecuting == false){ // if no scan started, throw exception
 	 	throw ScanNotInitializedException();
-	 }
-	 // unpin pages if pinned
-	 bufMgr->unPinPage(this->file, this->currentPageNum, false);
-	 scanExecuting = false; // signifies scan complete
-	 return;
+	}
+	
+	// unpin pages if pinned
+	bufMgr->unPinPage(this->file, this->currentPageNum, false);
+	scanExecuting = false; // signifies scan complete
+	return;
 }
 
 }
