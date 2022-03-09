@@ -632,6 +632,18 @@ void BTreeIndex::startScan(const void* lowValParm,
 	IndexMetaInfo *metaInfo = (IndexMetaInfo *) headerPage;
 	
 	if(metaInfo->rootIsLeaf){
+     this->currentPageNum = this->rootPageNum;
+     LeafNodeInt* root = (LeafNodeInt*)currentPageData; 
+		
+		for(int i = 0; i < INTARRAYLEAFSIZE; i++){
+			if (this->lowOp == GT && root->keyArray[i] > this->lowValInt) {
+				nextEntry = i; 
+				break;
+			} else if (this->lowOp == GTE && root->keyArray[i] >= this->lowValInt) {
+				nextEntry = i; 
+				break;
+			} 
+		}
 		return;
 	}
 
