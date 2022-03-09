@@ -66,13 +66,19 @@ BufMgr * bufMgr = new BufMgr(100);
 
 void createRelationForward();
 void createRelationBackward();
+void createRelationOneLeaf()
 void createRelationRandom();
 void intTests();
 int intScan(BTreeIndex *index, int lowVal, Operator lowOp, int highVal, Operator highOp);
+void intBoundsTest();
 void indexTests();
+void indexBoundsTest();
+void reopenIndex();
 void test1();
 void test2();
 void test3();
+void test4();
+void test5();
 void errorTests();
 void deleteRelation();
 
@@ -178,6 +184,24 @@ void test3()
 	deleteRelation();
 }
 
+void test4() 
+{
+  // case: root is leaf.
+  std::cout << "--------------------" << std::endl;
+	std::cout << "createRelationRandom" << std::endl;
+	createRelationOneLeaf();
+  intTests();
+  deleteRelation();
+}
+
+void test5() 
+{
+  std::cout << "--------------------" << std::endl;
+	std::cout << "createRelationRandom" << std::endl;
+	createRelationRandom();
+  indexBoundsTest();
+  deleteRelation();
+}
 // -----------------------------------------------------------------------------
 // createRelationForward
 // -----------------------------------------------------------------------------
@@ -276,8 +300,71 @@ void createRelationBackward()
 }
 
 // -----------------------------------------------------------------------------
-// createRelationRandom
+// createRelationOneLeaf
 // -----------------------------------------------------------------------------
+
+void createRelationOneLeaf()
+{
+  // destroy any old copies of relation file
+	try
+	{
+		File::remove(relationName);
+	}
+	catch(const FileNotFoundException &e)
+	{
+	}
+  file1 = new PageFile(relationName, true);
+
+  // initialize all of record1.s to keep purify happy
+  memset(record1.s, ' ', sizeof(record1.s));
+	PageId new_page_number;
+  Page new_page = file1->allocatePage(new_page_number);
+
+  // insert records in random order
+
+  std::vector<int> intvec(1);
+  for( int i = 0; i < 1; i++ )
+  {
+    intvec[i] = i;
+  }
+
+  long pos;
+  int val;
+	int i = 0;
+  while( i < 1 )
+  {
+    pos = random() % (1-i);
+    val = intvec[pos];
+    sprintf(record1.s, "%05d string record", val);
+    record1.i = val;
+    record1.d = val;
+
+    std::string new_data(reinterpret_cast<char*>(&record1), sizeof(RECORD));
+
+		while(1)
+		{
+			try
+			{
+    		new_page.insertRecord(new_data);
+				break;
+			}
+			catch(const InsufficientSpaceException &e)
+			{
+      	file1->writePage(new_page_number, new_page);
+  			new_page = file1->allocatePage(new_page_number);
+			}
+		}
+
+		int temp = intvec[1-1-i];
+		intvec[1-1-i] = intvec[pos];
+		intvec[pos] = temp;
+		i++;
+  }
+  
+	file1->writePage(new_page_number, new_page);
+}
+
+
 
 void createRelationRandom()
 {
@@ -356,6 +443,26 @@ void indexTests()
   }
 }
 
+void indexBoundsTest() 
+{
+  intBoundsTest();
+  try
+  {
+    File::remove(intIndexName);
+  }
+  catch (FileNotFoundException &e)
+  {
+  }
+}
+
+void reopenIndex()
+{
+  BTreeIndex index(relationName, intIndexName, bufMgr, offsetof(tuple,i), INTEGER);
+  checkPassFail(intScan(&index,25,GT,40,LT), 14)
+  BTreeIndex index(relationName, intIndexName, bufMgr, offsetof(tuple,i), INTEGER);
+  checkPassFail(intScan(&index,25,GT,40,LT), 14)
+}
+
 // -----------------------------------------------------------------------------
 // intTests
 // -----------------------------------------------------------------------------
@@ -431,6 +538,14 @@ int intScan(BTreeIndex * index, int lowVal, Operator lowOp, int highVal, Operato
   std::cout << std::endl;
 
 	return numResults;
+}
+
+
+void intBoundsTest() 
+{
+  std::cout << "Create a B+ Tree index on the integer field" << std::endl;
+  BTreeIndex index(relationName, intIndexName, bufMgr, offsetof(tuple,i), INTEGER);
+	checkPassFail(intScan(&index,-10,GT,10,LT), 14)
 }
 
 // -----------------------------------------------------------------------------
