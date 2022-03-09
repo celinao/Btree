@@ -66,6 +66,7 @@ BufMgr * bufMgr = new BufMgr(100);
 
 void createRelationForward();
 void createRelationBackward();
+void createRelationOneLeaf();
 void createRelationRandom();
 void intTests();
 int intScan(BTreeIndex *index, int lowVal, Operator lowOp, int highVal, Operator highOp);
@@ -354,6 +355,13 @@ void indexTests()
   catch(const FileNotFoundException &e)
   {
   }
+}
+
+
+void reopenIndex()
+{
+  BTreeIndex index(relationName, intIndexName, bufMgr, offsetof(tuple,i), INTEGER);
+  checkPassFail(intScan(&index,25,GT,40,LT), 14)
 }
 
 // -----------------------------------------------------------------------------
