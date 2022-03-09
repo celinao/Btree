@@ -70,9 +70,7 @@ void createRelationOneLeaf()
 void createRelationRandom();
 void intTests();
 int intScan(BTreeIndex *index, int lowVal, Operator lowOp, int highVal, Operator highOp);
-void intBoundsTest();
 void indexTests();
-void indexBoundsTest();
 void reopenIndex();
 void test1();
 void test2();
@@ -188,18 +186,18 @@ void test4()
 {
   // case: root is leaf.
   std::cout << "--------------------" << std::endl;
-	std::cout << "createRelationRandom" << std::endl;
+	std::cout << "createRelationOneLeaf" << std::endl;
 	createRelationOneLeaf();
-  intTests();
+  indexTests();
   deleteRelation();
 }
 
 void test5() 
 {
   std::cout << "--------------------" << std::endl;
-	std::cout << "createRelationRandom" << std::endl;
+	std::cout << "ReopenIndex" << std::endl;
 	createRelationRandom();
-  indexBoundsTest();
+  reopenIndex();
   deleteRelation();
 }
 // -----------------------------------------------------------------------------
@@ -443,17 +441,6 @@ void indexTests()
   }
 }
 
-void indexBoundsTest() 
-{
-  intBoundsTest();
-  try
-  {
-    File::remove(intIndexName);
-  }
-  catch (FileNotFoundException &e)
-  {
-  }
-}
 
 void reopenIndex()
 {
