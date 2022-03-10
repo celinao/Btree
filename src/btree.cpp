@@ -641,19 +641,19 @@ void BTreeIndex::startScan(const void* lowValParm,
 	IndexMetaInfo *metaInfo = (IndexMetaInfo *) headerPage;
 	
 	if(metaInfo->rootIsLeaf){
-		this->currentPageNum = this->rootPageNum;
-		bufMgr->readPage(file, currentPageNum, currentPageData); 
-     	LeafNodeInt* root = (LeafNodeInt*)currentPageData; 
+		// this->currentPageNum = this->rootPageNum;
+		// bufMgr->readPage(file, currentPageNum, currentPageData); 
+     	// LeafNodeInt* root = (LeafNodeInt*)currentPageData; 
 
-		for(int i = 0; i < INTARRAYLEAFSIZE; i++){
-			if (this->lowOp == GT && root->keyArray[i] > this->lowValInt) {
-				nextEntry = i; 
-				break;
-			} else if (this->lowOp == GTE && root->keyArray[i] >= this->lowValInt) {
-				nextEntry = i; 
-				break;
-			} 
-		}
+		// for(int i = 0; i < INTARRAYLEAFSIZE; i++){
+		// 	if (this->lowOp == GT && root->keyArray[i] > this->lowValInt) {
+		// 		nextEntry = i; 
+		// 		break;
+		// 	} else if (this->lowOp == GTE && root->keyArray[i] >= this->lowValInt) {
+		// 		nextEntry = i; 
+		// 		break;
+		// 	} 
+		// }
 		return; 
 	}
 
@@ -682,7 +682,7 @@ void BTreeIndex::scanHelper(PageId pageNo) {
 		}
 	}
 
-
+	std::cout << "scanhelper: " << node->level << std::endl;
 	if(node->level == 1){
 		// Leaf Node found. Set global variables 
 		bufMgr->readPage(file, node->pageNoArray[i], this->currentPageData); 
@@ -691,6 +691,7 @@ void BTreeIndex::scanHelper(PageId pageNo) {
 		LeafNodeInt *leafNode = (LeafNodeInt*)currentPageData; 
 		
 		for(int i = 0; i < INTARRAYLEAFSIZE; i++){
+			std::cout << "checking keys: " << i << "." << leafNode->keyArray[i] << std::endl;
 
 			if (this->lowOp == GT && leafNode->keyArray[i] > this->lowValInt) {
 				nextEntry = i; 
