@@ -36,14 +36,10 @@ BTreeIndex::BTreeIndex(const std::string & relationName,
 		const int attrByteOffset,
 		const Datatype attrType)
 {
-	// NOTE: I am unsure if we are supposed to call BlobFile::exists() in this function. 
-	// I don't see a need for it since if the file does/doesn't exist an exception should be 
-	// thrown when creating with constructor. However, a piazza post seems to indicate it should be???? 
-
 	// Initialize variables
 	// Assuming all inputs are integers (as specified in assignment document)
 	bufMgr = bufMgrIn; 
-	leafOccupancy = INTARRAYLEAFSIZE; // Not sure of the purpose of either of these
+	leafOccupancy = INTARRAYLEAFSIZE; 
 	nodeOccupancy = INTARRAYNONLEAFSIZE;
 	this->scanExecuting = false; 
 
@@ -59,7 +55,7 @@ BTreeIndex::BTreeIndex(const std::string & relationName,
 	// Create BlobFile
 	try{
 		// File Exists: 
-		
+
 		// Create a disk image of the index file (doesn't create a new file)
 		file = new BlobFile(indexName, false);
 		
@@ -71,7 +67,12 @@ BTreeIndex::BTreeIndex(const std::string & relationName,
 		rootPageNum = metaInfo->rootPageNo;
 		metaInfo->rootIsLeaf = true;
 
-		// No need to check for correct MetaInfo and throw a BadIndexInfoException (piazza)
+		// Check MetaInfo for correct information 
+		if(metaInfo->relationName != relationName.c_str() || 
+			metaInfo->attrByteOffset != attrByteOffset || 
+			metaInfo->attrType != attributeType ){
+			throw BadIndexInfoException("Index Information Incorrect"); 
+		}
 
 		// UnPinPage once done 
 		bufMgr->unPinPage(file, headerPageNum, false);

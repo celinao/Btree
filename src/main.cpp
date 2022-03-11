@@ -44,9 +44,8 @@ using namespace badgerdb;
 // Globals
 // -----------------------------------------------------------------------------
 const std::string relationName = "relA";
-//If the relation size is changed then the second parameter 2 chechPassFail may need to be changed to number of record that are expected to be found during the scan, else tests will erroneously be reported to have failed.
+//If the relation size is changed then the second parameter 2 checkPassFail may need to be changed to number of record that are expected to be found during the scan, else tests will erroneously be reported to have failed.
 const int	relationSize = 5000;
-// const int relationSize = 7;
 std::string intIndexName, doubleIndexName, stringIndexName;
 
 // This is the structure for tuples in the base relation
@@ -152,7 +151,7 @@ int main(int argc, char **argv)
 	// New Tests
 	// test4();
 	// test5();
-	std::cout << "\n>>> All Tests Passed. \ns" << std::endl;
+	std::cout << "\n>>> All Tests Passed. \n" << std::endl;
 
 	delete bufMgr;
 
