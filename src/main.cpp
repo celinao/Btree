@@ -72,6 +72,8 @@ void createRelationBackward();
 void createRelationOneLeaf();
 void createRelationRandom();
 void intTests();
+void smallIntTests(); 
+void smallIndexTests(); 
 int intScan(BTreeIndex *index, int lowVal, Operator lowOp, int highVal, Operator highOp);
 void indexTests();
 void reopenIndex();
@@ -148,7 +150,7 @@ int main(int argc, char **argv)
 	errorTests();
 
 	// New Tests
-	// test4();
+	test4();
 	test5();
 	std::cout << "\n>>> All Tests Passed. \n" << std::endl;
 
@@ -196,7 +198,7 @@ void test4()
   std::cout << "--------------------" << std::endl;
 	std::cout << "createRelationOneLeaf" << std::endl;
 	createRelationOneLeaf();
-  indexTests();
+  smallIndexTests();
   deleteRelation();
 }
 
@@ -327,9 +329,9 @@ void createRelationOneLeaf()
   Page new_page = file1->allocatePage(new_page_number);
 
   // insert records in random order
-
-  std::vector<int> intvec(1);
-  for( int i = 0; i < 1; i++ )
+  int smallSize = 50; 
+  std::vector<int> intvec(smallSize);
+  for( int i = 0; i < smallSize; i++ )
   {
     intvec[i] = i;
   }
@@ -337,9 +339,9 @@ void createRelationOneLeaf()
   long pos;
   int val;
 	int i = 0;
-  while( i < 1 )
+  while( i < smallSize )
   {
-    pos = random() % (1-i);
+    pos = random() % (smallSize-i);
     val = intvec[pos];
     sprintf(record1.s, "%05d string record", val);
     record1.i = val;
@@ -361,16 +363,14 @@ void createRelationOneLeaf()
 			}
 		}
 
-		int temp = intvec[1-1-i];
-		intvec[1-1-i] = intvec[pos];
+		int temp = intvec[smallSize-1-i];
+		intvec[smallSize-1-i] = intvec[pos];
 		intvec[pos] = temp;
 		i++;
   }
   
 	file1->writePage(new_page_number, new_page);
 }
-
-
 
 void createRelationRandom()
 {
@@ -449,6 +449,27 @@ void indexTests()
   }
 }
 
+void smallIndexTests()
+{
+  smallIntTests();
+	try
+	{
+		File::remove(intIndexName);
+	}
+  catch(const FileNotFoundException &e)
+  {
+  }
+}
+
+void smallIntTests()
+{
+  std::cout << "Create a B+ Tree index on the integer field" << std::endl;
+  BTreeIndex index(relationName, intIndexName, bufMgr, offsetof(tuple,i), INTEGER);
+	checkPassFail(intScan(&index,25,GT,40,LT), 14)
+	checkPassFail(intScan(&index,20,GTE,35,LTE), 16)
+	checkPassFail(intScan(&index,-3,GT,3,LT), 3)
+	checkPassFail(intScan(&index,40,GT,51,LTE), 9)
+}
 
 void reopenIndex()
 {

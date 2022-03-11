@@ -68,6 +68,7 @@ BTreeIndex::BTreeIndex(const std::string & relationName,
 		rootPageNum = metaInfo->rootPageNo;
 
 		// Check meta info for accurate information 
+		std::cout << "metaInfo->relationName: " << metaInfo->relationName << " RelationName: " << relationName.c_str() << std::endl; 
 		if(strcmp(metaInfo->relationName, relationName.c_str()) != 0){
 			throw BadIndexInfoException("Relation names do not match"); 
 		}else if(metaInfo->attrByteOffset != attrByteOffset){
@@ -129,8 +130,8 @@ BTreeIndex::BTreeIndex(const std::string & relationName,
 		}
 		catch(const EndOfFileException &e)
 		{
-			// std::cout << "Print Tree: " << std::endl;
-			// printTree(rootPageNum, true); 
+			std::cout << "Print Tree: " << std::endl;
+			printTree(rootPageNum, true); 
 			bufMgr->flushFile(file);
 		}
 	}
@@ -552,6 +553,7 @@ void BTreeIndex::startScan(const void* lowValParm,
 	headerPageNum = file->getFirstPageNo();
 	bufMgr->readPage(file, headerPageNum, headerPage);
 	IndexMetaInfo *metaInfo = (IndexMetaInfo *) headerPage;
+	bufMgr->unPinPage(file, headerPageNum, false);
 	
 	if(metaInfo->rootIsLeaf){
 		this->currentPageNum = this->rootPageNum;
@@ -570,8 +572,7 @@ void BTreeIndex::startScan(const void* lowValParm,
 		}
 		return; 
 	}
-
-	bufMgr->unPinPage(file, headerPageNum, false); 
+ 
 	scanHelper(rootPageNum);
 }
 
@@ -601,7 +602,7 @@ void BTreeIndex::scanHelper(PageId pageNo) {
 		this->currentPageNum = node->pageNoArray[pos]; 
 
 		LeafNodeInt *leafNode = (LeafNodeInt*)currentPageData; 
-		
+
 		// Find the the first nextEntry 
 		for(int i = 0; i < INTARRAYLEAFSIZE; i++){
 			if (this->lowOp == GT && leafNode->keyArray[i] > this->lowValInt) {
