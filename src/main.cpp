@@ -139,11 +139,16 @@ int main(int argc, char **argv)
 
 	File::remove(relationName);
 
+	// read_existing_part1();
 	test1();
-	// test2();
-	// test3();
-	// errorTests();
-	std::cout << "______passed tests_____" << std::endl;
+	test2();
+	test3();
+	errorTests();
+
+	// New Tests
+	// test4();
+	// test5();
+	std::cout << "\n>>> All Tests Passed. \ns" << std::endl;
 
 	delete bufMgr;
 
@@ -158,7 +163,7 @@ void test1()
 	std::cout << "createRelationForward" << std::endl;
 	createRelationForward();
 	indexTests();
-	// deleteRelation();
+	deleteRelation();
 }
 
 void test2()
