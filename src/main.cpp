@@ -142,7 +142,6 @@ int main(int argc, char **argv)
 
 	File::remove(relationName);
 
-	// read_existing_part1();
 	test1();
 	test2();
 	test3();
@@ -150,7 +149,7 @@ int main(int argc, char **argv)
 
 	// New Tests
 	// test4();
-	// test5();
+	test5();
 	std::cout << "\n>>> All Tests Passed. \n" << std::endl;
 
 	delete bufMgr;
@@ -453,11 +452,10 @@ void indexTests()
 
 void reopenIndex()
 {
-	std::cout << "I've commented out reopenIndex()" << std::endl;
-//   BTreeIndex index(relationName, intIndexName, bufMgr, offsetof(tuple,i), INTEGER);
-//   checkPassFail(intScan(&index,25,GT,40,LT), 14)
-//   BTreeIndex index(relationName, intIndexName, bufMgr, offsetof(tuple,i), INTEGER);
-//   checkPassFail(intScan(&index,25,GT,40,LT), 14)
+  BTreeIndex index(relationName, intIndexName, bufMgr, offsetof(tuple,i), INTEGER);
+  checkPassFail(intScan(&index,25,GT,40,LT), 14)
+  BTreeIndex index2(relationName, intIndexName, bufMgr, offsetof(tuple,i), INTEGER);
+  checkPassFail(intScan(&index2,25,GT,40,LT), 14)
 }
 
 // -----------------------------------------------------------------------------

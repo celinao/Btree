@@ -64,14 +64,16 @@ BTreeIndex::BTreeIndex(const std::string & relationName,
 		headerPageNum = file->getFirstPageNo();
 		bufMgr->readPage(file, headerPageNum, headerPage);
 		IndexMetaInfo *metaInfo = (IndexMetaInfo *) headerPage;
-		rootPageNum = metaInfo->rootPageNo;
-		metaInfo->rootIsLeaf = true;
 
-		// Check MetaInfo for correct information 
-		if(metaInfo->relationName != relationName.c_str() || 
-			metaInfo->attrByteOffset != attrByteOffset || 
-			metaInfo->attrType != attributeType ){
-			throw BadIndexInfoException("Index Information Incorrect"); 
+		rootPageNum = metaInfo->rootPageNo;
+
+		// Check meta info for accurate information 
+		if(strcmp(metaInfo->relationName, relationName.c_str()) != 0){
+			throw BadIndexInfoException("Relation names do not match"); 
+		}else if(metaInfo->attrByteOffset != attrByteOffset){
+			throw BadIndexInfoException("Attribute Byte Offsets do not match"); 
+		}else if(metaInfo->attrType != attributeType){
+			throw BadIndexInfoException("Attribute Types do not match"); 
 		}
 
 		// UnPinPage once done 
@@ -573,45 +575,6 @@ void BTreeIndex::startScan(const void* lowValParm,
 	scanHelper(rootPageNum);
 }
 
-
-// -----------------------------------------------------------------------------
-// BTreeIndex::scanNext
-// -----------------------------------------------------------------------------
-
-void BTreeIndex::scanNext(RecordId& outRid) 
-{
-	if (this->scanExecuting == false){
-	 	throw ScanNotInitializedException();
-	}
-
-    LeafNodeInt* node = (LeafNodeInt*) this->currentPageData;
-
-	// End Scan or go to next node 
-	if(this->nextEntry >= INTARRAYLEAFSIZE || node->ridArray[nextEntry].page_number == 0){
-		
-		if (node->rightSibPageNo == 0) {
-			throw IndexScanCompletedException(); // if leaf is over
-		} else {
-			bufMgr->unPinPage(this->file, this->currentPageNum, false);
-
-			this->nextEntry = 0; //reinitialize nextentry
-			this->currentPageNum = node->rightSibPageNo;
-			bufMgr->readPage(this->file, this->currentPageNum, this->currentPageData);
-			node = (LeafNodeInt*) this->currentPageData;
-		}
-	}
-
-	// Check if rid is found or if the scan has been completed
-	if (this->highOp == LT && node->keyArray[this->nextEntry] < this->highValInt) {
-		outRid = node->ridArray[nextEntry];
-	} else if (this->highOp == LTE && node->keyArray[this->nextEntry] <= this->highValInt) {
-		outRid = node->ridArray[nextEntry];
-	} else {throw IndexScanCompletedException();}
-
-	this->nextEntry += 1; //update to next
-	return;
-}
-
 void BTreeIndex::scanHelper(PageId pageNo) {
 	
 	// Creates Internal node being checked 
@@ -655,6 +618,44 @@ void BTreeIndex::scanHelper(PageId pageNo) {
 }
 
 // -----------------------------------------------------------------------------
+// BTreeIndex::scanNext
+// -----------------------------------------------------------------------------
+
+void BTreeIndex::scanNext(RecordId& outRid) 
+{
+	if (this->scanExecuting == false){
+	 	throw ScanNotInitializedException();
+	}
+
+    LeafNodeInt* node = (LeafNodeInt*) this->currentPageData;
+
+	// End Scan or go to next node 
+	if(this->nextEntry >= INTARRAYLEAFSIZE || node->ridArray[nextEntry].page_number == 0){
+		
+		if (node->rightSibPageNo == 0) {
+			throw IndexScanCompletedException(); // if leaf is over
+		} else {
+			bufMgr->unPinPage(this->file, this->currentPageNum, false);
+
+			this->nextEntry = 0; //reinitialize nextentry
+			this->currentPageNum = node->rightSibPageNo;
+			bufMgr->readPage(this->file, this->currentPageNum, this->currentPageData);
+			node = (LeafNodeInt*) this->currentPageData;
+		}
+	}
+
+	// Check if rid is found or if the scan has been completed
+	if (this->highOp == LT && node->keyArray[this->nextEntry] < this->highValInt) {
+		outRid = node->ridArray[nextEntry];
+	} else if (this->highOp == LTE && node->keyArray[this->nextEntry] <= this->highValInt) {
+		outRid = node->ridArray[nextEntry];
+	} else {throw IndexScanCompletedException();}
+
+	this->nextEntry += 1; //update to next
+	return;
+}
+
+// -----------------------------------------------------------------------------
 // BTreeIndex::endScan
 // -----------------------------------------------------------------------------
 //
@@ -667,8 +668,6 @@ void BTreeIndex::endScan()
 	// unpin pages if pinned
 	bufMgr->unPinPage(this->file, this->currentPageNum, false);
 	scanExecuting = false; // signifies scan complete
-	currentPageData = nullptr; 
-	currentPageNum = 0; 
 	
 	return;
 }
