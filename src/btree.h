@@ -1,4 +1,8 @@
 /**
+ * Group 24: 
+ * Celina Ough 9074747438 
+ * Atharva Kudkilwar 9081348659
+ * 
  * @author See Contributors.txt for code contributors and overview of BadgerDB.
  *
  * @section LICENSE
